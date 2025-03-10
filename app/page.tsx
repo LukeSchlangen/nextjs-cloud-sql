@@ -1,101 +1,97 @@
-import Image from "next/image";
+'use client'
+import React, { useEffect, useState } from "react";
+import { addNewTaskToDatabase, getTasksFromDatabase, deleteTaskFromDatabase, updateTaskInDatabase } from "./actions";
+
+type Task = {
+  id: string;
+  title: string;
+  status: 'IN_PROGRESS' | 'COMPLETE';
+};
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+  const [newTaskTitle, setNewTaskTitle] = useState('');
+  const [tasks, setTasks] = useState<Task[]>([]);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+  async function getTasks() {
+    const updatedListOfTasks = await getTasksFromDatabase();
+    setTasks(updatedListOfTasks);
+  }
+
+  useEffect(() => {
+    getTasks();
+  }, []);
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    await addNewTaskToDatabase(newTaskTitle);
+    await getTasks();
+    setNewTaskTitle('');
+  };
+
+  async function updateTask(task: Task, newTaskValues: Partial<Task>) {
+    await updateTaskInDatabase({ ...task, ...newTaskValues });
+    await getTasks();
+  }
+
+  async function deleteTask(taskId: string) {
+    await deleteTaskFromDatabase(taskId);
+    await getTasks();
+  }
+
+  return (
+    <main className="p-4">
+      <h2 className="text-2xl font-bold mb-4">To Do List</h2>
+      <div className="flex mb-4">
+        <form onSubmit={handleSubmit} className="flex mb-8">
+          <input
+            type="text"
+            placeholder="New Task Title"
+            value={newTaskTitle}
+            onChange={(e) => setNewTaskTitle(e.target.value)}
+            className="flex-grow border border-gray-400 rounded px-3 py-2 mr-2 bg-inherit"
+          />
+          <button
+            type="submit"
+            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded text-nowrap"
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+            Add New Task
+          </button>
+        </form>
+      </div>
+      <table className="w-full">
+        <tbody>
+          {tasks.map(function (task) {
+            const isComplete = task.status === 'COMPLETE';
+            return (
+              <tr key={task.id} className="border-b border-gray-200">
+                <td className="py-2 px-4">
+                  <input
+                    type="checkbox"
+                    checked={isComplete}
+                    onClick={() => updateTask(task, { status: isComplete ? 'IN_PROGRESS' : 'COMPLETE' })}
+                    className="transition-transform duration-300 ease-in-out transform scale-100 checked:scale-125 checked:bg-green-500"
+                  />
+                </td>
+                <td className="py-2 px-4">
+                  <span
+                    className={`transition-all duration-300 ease-in-out ${isComplete ? 'line-through text-gray-400 opacity-50' : 'opacity-100'}`}
+                  >
+                    {task.title}
+                  </span>
+                </td>
+                <td className="py-2 px-4">
+                  <button
+                    onClick={() => deleteTask(task.id)}
+                    className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded float-right"
+                  >
+                    Delete
+                  </button>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </main>
   );
 }
